@@ -1,0 +1,14 @@
+{
+  "name": "rule-engine",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "npx tsc"
+  },
+  "devDependencies": {
+    "@tsconfig/node16": "^1.0.3",
+    "@types/node": "18.14.2",
+    "eslint": "8.35.0",
+    "typescript": "4.9.5"
+  },
+  "dependencies": {}
+}
