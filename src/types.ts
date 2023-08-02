@@ -15,7 +15,7 @@ export type Effect = {
     error?: RuleError;
 };
 
-export type Condition = [string, Operator, string];
+export type Condition = [string, Operator, string | number];
 
 export type Rule = Record<string, {
     conditions: Condition[];

@@ -1,14 +1,8 @@
 "use strict"
 
-import {
-    ApplyRulesResponse,
-    Condition,
-    Effect,
-    Rule,
-    RuleError,
-    UnknownObject,
-} from './types';
-import { Action, Operator } from './enums';
+import {ApplyRulesResponse, Condition, Effect, Rule, RuleError, UnknownObject,} from './types';
+import {Action, Operator} from './enums';
+import {getObjectKeyValue, setObjectProperty} from "./helpers";
 
 export class RuleEngine {
     private readonly rules: Rule;
@@ -64,7 +58,8 @@ export class RuleEngine {
      * properties (`object.key.subKey`), and an object. It splits the key on the
      * `"."` character, and attempts to recursively access the properties of the
      * provided object.
-     * TODO: revisit use of `keyof {}` here
+     * TODO: revisit use of `keyof {}` here. We should use UnknownObject
+     * TODO: also revisit lots of casting here (line 80 etc)
      */
     getObjectKeyValue<T extends {}>(key: string, object: T): string | string[] | number {
         const keys: string[] = key.split(".");
@@ -80,28 +75,32 @@ export class RuleEngine {
     }
 
     /**
-     * Takes a string `field`, an object `object` of type `T`, and an optional
-     * `fallbackObject`. The first two characters of the `field` string is checked to
-     * see if it equals `"$"`. e.g. if the string is `"$.downloadedTracks"`, it uses the
-     * `getObjectKeyValue` method to check the provided track object for a `downloadedTracks`
+     * The first character of the `field` string is checked to see if it equals
+     * `"$."`. e.g. if the string is `"$.downloadedTracks"`, it uses the
+     * `getObjectKeyValue` method to check the provided object for a `downloadedTracks`
      * key. If the key is found, the value is returned. Else, it checks the fallback
-     * object for a `downloadedTracks` key. However, if the provided `field` string does
+     * object for a `downloadedTracks` key. However, if the provided `field` does
      * not start with `"$."`, that string is returned as is.
      *
      * You should provide a fallback object where one or more rules compare values
      * across different objects.
      */
-    getFieldValue(field: string, object: UnknownObject, fallbackObject?: UnknownObject): string | string[] | number {
-        if (field[0] === '$') {
-            const value = this.getObjectKeyValue<UnknownObject>(field.substring(2), object);
-            if (value) return value;
+    getFieldValue(field: string | number, object: UnknownObject, fallbackObject?: UnknownObject): unknown {
+        if (typeof field === 'string') {
+            // TODO: consider breaking this function into `getLeftValue` and `getRightValue`
+            // Reason: get left should always reference an object key with "$."
+            // but getRight can take just a value e.g. $.tags CONTAINS 'rap'.
+            if (field.slice(0, 2) === '$.') {
+                const value = getObjectKeyValue(field, object, false);
+                if (value || value === '') return value;
 
-            if (!fallbackObject)
-                throw new Error(
-                    `Object has no ${field.substring(2)} key, and no fallback object was provided`,
-                );
+                if (!fallbackObject)
+                    throw new Error(
+                        `Object has no ${field.substring(2)} key, and no fallback object was provided`,
+                    );
 
-            return this.getObjectKeyValue<UnknownObject>(field.substring(2), fallbackObject);
+                return getObjectKeyValue(field, fallbackObject);
+            }
         }
 
         return field;
@@ -111,71 +110,104 @@ export class RuleEngine {
      * Constructs a string expression and evaluates whether the expression is truthy.
      * It uses `Function()`, a close relative to JavaScript `eval()`, to evaluate the
      * expression based on any of the operations defined under `Operation` enum.
+     * This function can only compare numbers and strings (and arrays only when the
+     * operator is CONTAINS).
      */
-    conditionIsTruthy(left: number | string | string[], operator: Operator, right: number | string): boolean {
+    conditionIsTruthy(left: number | string | (number | string)[], operator: Operator, right: number | string): boolean {
         const comparator = this.getOperator(operator);
-        // todo: you should use getFieldValue() here
 
-        if (comparator === Operator.CONTAINS) {
-            return Function(
-                `"use strict"; return ('${left}'.includes('${right}'))`,
-            )();
+        // Run operator guards
+        switch (operator) {
+            case Operator.LESS_THAN:
+            case Operator.LESS_THAN_OR_EQUALS:
+            case Operator.GREATER_THAN:
+            case Operator.GREATER_THAN_OR_EQUALS:
+                if (Number.isInteger(left) && Number.isInteger(right)) {
+                    return Function(
+                        `"use strict"; return (${left} ${comparator} ${right})`,
+                    )();
+                }
+
+                throw new Error('Failed arithmetic comparison on one or more non-integer values');
+            case Operator.EQUALS:
+                if (Number.isInteger(left) && Number.isInteger(right)) {
+                    return Function(
+                        `"use strict"; return (${left} ${comparator} ${right})`,
+                    )();
+                }
+
+                if (typeof left === 'string' && typeof right === 'string') {
+                    return Function(
+                        `"use strict"; return ('${left}' ${comparator} '${right}')`,
+                    )();
+                }
+
+                throw new Error('Compared values must be of the same type number or string');
+            case Operator.CONTAINS:
+                if (!Array.isArray(left))
+                    throw new Error('Left field should be an array when operator is CONTAINS');
+
+                if (typeof right === 'string') {
+                    return Function(
+                        `"use strict"; return ('${left}'.includes('${right}'))`,
+                    )();
+                }
+
+                if (Number.isInteger(right)) {
+                    return Function(
+                        `"use strict"; return ('${left}'.includes(${right}))`,
+                    )();
+                }
+
+                throw new Error('You may check if array contains numbers or strings only');
+            default:
+                throw new Error(`No guard found for ${operator} operator`);
         }
-
-        return Function(
-            `"use strict"; return ('${left}' ${comparator} '${right}')`,
-        )();
     }
 
-    /**
-     * Perform some checks on `effect` and `targetObject` to confirm that an
-     * arithmetic operation can be done on the target object.
-     */
-    effectIsReadyForArithmeticOperation(
+    performArithmeticOperation(
+        object: UnknownObject,
         effect: Effect,
-        targetObject: UnknownObject
-    ): { property: string; value: number } {
-        if (!effect?.property)
-            throw new Error("RuleDefinitionError: property that receives effect is not defined in rule");
-        // At this point, we cannot afford to have `effect.value` as undefined because
-        // we want to perform an arithmetic action
+    ): UnknownObject {
+        const { action } = effect;
+        const { property } = effect;
+
+        if (!property)
+            throw new Error(`Cannot ${action} where effect property is undefined`);
+
+        const propertyValue = getObjectKeyValue(property, object);
+
+        if (typeof propertyValue !== 'number')
+            throw new Error(`Cannot ${action} a non-integer`);
+
         if (!effect?.value || !Number.isInteger(effect.value))
             throw new Error("Effect value is either undefined or not a number");
 
-        if (!this.isPlainObject(targetObject)) throw new Error("runEffect expects an object");
+        if (![Action.INCREMENT, Action.DECREMENT].includes(action))
+            throw new Error(`${action} is invalid for arithmetic operation`);
 
-        const { property } = effect;
-        if (!Number.isInteger(targetObject[property]))
-            throw new Error("FatalError: attempting to increment a value whose type is not number");
+        const newValue = action === Action.INCREMENT
+            ? propertyValue + effect.value
+            : propertyValue - effect.value;
 
-        return { property, value: effect.value };
+        return setObjectProperty(property, newValue, object);
     }
 
-    runEffect(object: UnknownObject, effect: Effect): UnknownObject | Action {
-        const clonedObject = structuredClone(object);
+    runEffect(target: UnknownObject | Array<UnknownObject>, effect: Effect): UnknownObject | Action {
+        const clonedTarget = structuredClone(target);
 
         switch (effect.action) {
             case Action.INCREMENT:
-                const increment = this.effectIsReadyForArithmeticOperation(effect, clonedObject);
-                clonedObject[increment.property] = (clonedObject[increment.property] as number) + increment.value;
-                break;
             case Action.DECREMENT:
-                const decrement = this.effectIsReadyForArithmeticOperation(effect, clonedObject);
-                clonedObject[decrement.property] = (clonedObject[decrement.property] as number) - decrement.value;
-                break;
-            case Action.REPLACE:
-                if (!effect?.property)
-                    throw new Error("RuleDefinitionError: property that receives effect is not defined in rule");
-                clonedObject[effect.property] = effect.value;
-                break;
+                if (this.isPlainObject(clonedTarget)) {
+                    return this.performArithmeticOperation(clonedTarget, effect);
+                }
+                throw new Error(`Cannot perform ${effect.action} action on non-object`);
             case Action.OMIT:
-            case Action.OMIT_WITH_SILENT_ERROR:
                 return effect.action;
             default:
-                throw new Error(`${effect.action} not found in effect runner`);
+                throw new Error(`No handler defined for ${effect.action} in runEffect`);
         }
-
-        return clonedObject;
     }
 
     checkForMatchingRules(object: UnknownObject, fallback?: UnknownObject): string[] {
@@ -191,7 +223,10 @@ export class RuleEngine {
                 const right = this.getFieldValue(rightField, object, fallback);
 
                 if (!(typeof right === "string" || typeof right === "number"))
-                    throw new Error("conditionIsTruthy: argument 'right' is not a string or number");
+                    throw new Error("argument 'right' should be a string or number");
+
+                if (!(typeof left === "string" || typeof left === "number" || Array.isArray(left)))
+                    throw new Error("argument 'left' should be a string, number or array");
 
                 if (this.conditionIsTruthy(left, operator, right)) {
                     numberOfRulesMatched++;
@@ -216,7 +251,7 @@ export class RuleEngine {
 
             if (!matchedRules.length) {
                 results.push(object);
-                return { results };
+                continue;
             }
 
             for (const ruleName of matchedRules) {
