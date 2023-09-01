@@ -1,96 +1,79 @@
 import {getObjectKeyValue} from "../src/helpers";
-import {flatObject, nestedAlbumObject} from "./mock/objects";
-import * as Helpers from "../src/helpers";
-
-const preventUseOfDotNotationKeyOnFlatObjectMock = jest
-    .spyOn(Helpers, 'preventUseOfDotNotationKeyOnFlatObject')
-    .mockImplementation();
+import {nestedAlbumObject, safeTrack} from "./mock/objects";
 
 describe('Get object key value', () => {
-    describe('flat object', () => {
-        const object = {
-            title: 'Heal the World',
-            year: 1991,
-            tags: ["pop", "society"],
-        };
+    it('should throw error if key does not start with "$."', () => {
+        const keyWithoutDollarSign = 'title';
+        expect(() => getObjectKeyValue(keyWithoutDollarSign, safeTrack))
+            .toThrowError('"$." notation is required to reference object key');
+    });
 
+    describe('flat object', () => {
         it('should fetch an object key whose value is a string', () => {
-            const result = getObjectKeyValue('title', object);
+            const result = getObjectKeyValue('$.title', safeTrack);
 
             expect(typeof result).toBe('string');
             expect(result).toBe('Heal the World');
         });
 
         it('should fetch an object key whose value is a number', () => {
-            const result = getObjectKeyValue('year', object);
+            const result = getObjectKeyValue('$.year', safeTrack);
 
             expect(typeof result).toBe('number');
             expect(result).toBe(1991);
         });
 
         it('should fetch an object key whose value is an array', () => {
-            const result = getObjectKeyValue('tags', object);
+            const result = getObjectKeyValue('$.tags', safeTrack);
 
             expect(Array.isArray(result)).toBe(true);
             expect(result).toStrictEqual(["pop", "society"]);
         });
-
-        it('should return undefined if object key does not exist', () => {
-            const nonExistentKey = 'category';
-            const result = getObjectKeyValue(nonExistentKey, object);
-
-            expect(result).toBe(undefined);
-        });
     });
 
     describe('nested object', () => {
-        describe('using dot notation', () => {
-            it('should fetch an object key from a nested object', () => {
-                const result = getObjectKeyValue('album.title', nestedAlbumObject);
+        it('should fetch the value of a top-level key', () => {
+            const result = getObjectKeyValue('$.album', nestedAlbumObject);
 
-                expect(typeof result).toBe('string');
-                expect(result).toBe('Bamboo Flute');
-            });
+            expect(result).toStrictEqual(nestedAlbumObject.album);
+        });
 
-            it('should fetch an object key from a deeply nested object', () => {
-                const result = getObjectKeyValue('album.meta.streams.total', nestedAlbumObject);
+        it('should fetch the value of a key within a nested object', () => {
+            const result = getObjectKeyValue('$.album.title', nestedAlbumObject);
 
-                expect(typeof result).toBe('number');
-                expect(result).toBe(2_300_000);
-            });
+            expect(typeof result).toBe('string');
+            expect(result).toBe('Bamboo Flute');
+        });
 
-            it('should return undefined if object key does not exist', () => {
-                const nonExistentKey = 'album.meta.category';
-                const result = getObjectKeyValue(nonExistentKey, nestedAlbumObject);
+        it('should fetch the value of a key within a deeply nested object', () => {
+            const result = getObjectKeyValue('$.album.meta.streams.total', nestedAlbumObject);
 
-                expect(result).toBe(undefined);
-            });
+            expect(typeof result).toBe('number');
+            expect(result).toBe(2_300_000);
         });
     });
 
-    // describe('throwDotNotation is set to false', () => {
-    //     afterAll(() => {
-    //         preventUseOfDotNotationKeyOnFlatObjectMock.mockClear();
-    //     });
-    //
-    //     it('should NOT call preventUseOfDotNotationKeyOnFlatObject', () => {
-    //         getObjectKeyValue('name.firstName', flatObject, false);
-    //
-    //         expect(preventUseOfDotNotationKeyOnFlatObjectMock)
-    //             .not.toHaveBeenCalled();
-    //     });
-    // });
-    //
-    // describe('throwDotNotation is set to true', () => {
-    //     afterAll(() => {
-    //         preventUseOfDotNotationKeyOnFlatObjectMock.mockClear();
-    //     });
-    //
-    //     it('should call preventUseOfDotNotationKeyOnFlatObject', () => {
-    //         getObjectKeyValue('album.meta', nestedAlbumObject);
-    //
-    //         expect(preventUseOfDotNotationKeyOnFlatObjectMock)
-    //             .toHaveBeenCalledTimes(1);
-    //     });
-    // });
+    describe('object key does not exist', () => {
+        const nonExistentKey = '$.category';
+
+        it('should use fallback object', () => {
+            const fallbackObject = {
+                category: 'general',
+                trackDuration: '6:25',
+            };
+            const result = getObjectKeyValue(nonExistentKey, safeTrack, fallbackObject);
+
+            expect(result).toBe('general');
+        });
+
+        it('should throw error if no fallback object is provided', () => {
+            expect(() => getObjectKeyValue(nonExistentKey, safeTrack))
+                .toThrowError('Object has no category key, and no fallback object was provided');
+        });
+
+        it('should return undefined if throwObjectKeyNotFoundError is false', () => {
+            const result = getObjectKeyValue(nonExistentKey, safeTrack, undefined, false);
+            expect(result).toBe(undefined);
+        });
+    });
 });

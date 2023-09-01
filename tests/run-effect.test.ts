@@ -5,7 +5,7 @@ import {
     cart,
     productWithPriceGreaterThan120,
     salesRules,
-    safeTrack, trackWithStrongLanguage, musicTrackRules
+    safeTrack, trackWithStrongLanguage, musicTrackRules, ruleWithUnknownAction
 } from "./mock/objects";
 import {Effect} from "../src/types";
 import {Action} from "../src/enums";
@@ -76,6 +76,16 @@ describe('Run effect', () => {
             const result = ruleEngine.runEffect(tracks, effect);
 
             expect(result).toBe(Action.OMIT);
+        });
+    });
+
+    describe('unknown action', () => {
+        it('should throw an error', () => {
+            const ruleEngine = new RuleEngine(ruleWithUnknownAction);
+            const { effect } = ruleEngine.getRule('applyStudentDiscount');
+
+            expect(() => ruleEngine.runEffect(cart, effect))
+                .toThrowError(`No handler defined for "${effect.action}" action in runEffect`);
         });
     });
 });

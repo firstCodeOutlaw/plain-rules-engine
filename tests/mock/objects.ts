@@ -21,7 +21,7 @@ export const salesRules: Rule = {
         ],
         effect: {
             action: Action.INCREMENT,
-            property: 'price',
+            property: '$.price',
             value: 8
         }
     },
@@ -55,6 +55,20 @@ export const musicTrackRules: Rule = {
             action: Action.OMIT,
         },
     },
+};
+
+export const ruleWithUnknownAction: Rule = {
+    applyStudentDiscount: {
+        conditions: [
+            ['$.customerType', Operator.EQUALS, 'student'],
+        ],
+        effect: {
+            // @ts-expect-error: The value below is not a valid Action enum
+            action: 'action not defined Action enum',
+            property: '$.purchase.amountTotalDiscounted',
+            value: 5,
+        },
+    }
 };
 
 export const productWithPriceGreaterThan120: RandomProduct = {

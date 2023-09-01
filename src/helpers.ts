@@ -6,61 +6,36 @@ export function isPlainObject(value: unknown): value is UnknownObject {
     return typeof value === 'object' && !Array.isArray(value) && value !== null;
 }
 
-export function objectIsFlat(object: UnknownObject): boolean {
-    let isFlat = true;
-    const keys = Object.keys(object);
-
-    keys.forEach((key) => {
-        if (isPlainObject(object[key])) {
-            isFlat = false;
-            return;
-        }
-    });
-
-    return isFlat;
-}
-
-// TODO: rename to setObjectKeyValue
-export function setObjectProperty(
+export function setObjectKeyValue(
     key: string,
     value: unknown,
     object: UnknownObject,
 ): UnknownObject {
-    const firstTwoCharacters = key.slice(0, 2);
+    if (key.slice(0, 2) !== '$.')
+        throw new Error('"$." notation is required to reference object key');
 
-    if (firstTwoCharacters === '$.') {
-        const dotNotationString = key.slice(2); // with "$." excluded
-        preventUseOfDotNotationKeyOnFlatObject(dotNotationString, object);
-        return set(object, dotNotationString, value);
-    }
-
-    return set(object, key, value);
+    const dotNotationKey = key.slice(2); // "$." excluded
+    return set(object, dotNotationKey, value);
 }
 
 export function getObjectKeyValue(
     key: string,
     object: UnknownObject,
-    throwDotNotationError: boolean = true,
+    fallbackObject?: UnknownObject,
+    throwObjectKeyNotFoundError: boolean = true
 ): unknown {
-    const firstTwoCharacters = key.slice(0, 2);
+    if (key.slice(0, 2) !== '$.')
+        throw new Error('"$." notation is required to reference object key');
 
-    if (firstTwoCharacters === '$.') {
-        const dotNotationString = key.slice(2); // with "$." excluded
+    const dotNotationKey = key.slice(2); // "$." excluded
+    const value = get(object, dotNotationKey);
+    if (value || value === '') return value;
 
-        if (throwDotNotationError)
-            preventUseOfDotNotationKeyOnFlatObject(dotNotationString, object);
-        return get(object, dotNotationString);
-    }
+    if (throwObjectKeyNotFoundError && !fallbackObject)
+        throw new Error(
+            `Object has no ${key.substring(2)} key, and no fallback object was provided`,
+        );
 
-    return get(object, key);
+    return get(fallbackObject, dotNotationKey);
 }
 
-export function preventUseOfDotNotationKeyOnFlatObject(
-    dotNotation: string,
-    object: UnknownObject
-): void {
-    const targetsNestedObject = dotNotation.split('.').length > 1;
-
-    if (targetsNestedObject && objectIsFlat(object))
-        throw new Error('Cannot use dot notation on flat object');
-}

@@ -244,5 +244,18 @@ describe('Condition is truthy', () => {
                 expect(result).toBe(true);
             });
         });
+
+        describe('objects', () => {
+            it('should throw an error', () => {
+                const errorFunction = () => ruleEngine.conditionIsTruthy(
+                    ['green', 'red', 'amber'],
+                    Operator.CONTAINS,
+                    // @ts-expect-error: we can only pass a string or number, not an object
+                    { name: 'John Doe' }
+                );
+
+                expect(errorFunction).toThrowError('You may check if array contains numbers or strings only');
+            });
+        });
     });
 });

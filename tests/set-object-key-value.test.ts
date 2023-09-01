@@ -1,10 +1,16 @@
 import {flatObject, nestedObject, productWithPriceLessThan120} from "./mock/objects";
-import {setObjectProperty} from "../src/helpers";
+import {setObjectKeyValue} from "../src/helpers";
 
-describe('Set object property', () => {
+describe('Set object key value', () => {
+    it('should throw error if key does not start with "$."', () => {
+        const keyWithoutDollarSign = 'firstName';
+        expect(() => setObjectKeyValue(keyWithoutDollarSign, 'Bruce', flatObject))
+            .toThrowError('"$." notation is required to reference object key');
+    });
+
     describe('nested object', () => {
         it('should replace key value using dot notation if key exists', () => {
-            const result = setObjectProperty(
+            const result = setObjectKeyValue(
                 '$.purchase.amountTotalDiscounted',
                 201,
                 nestedObject,
@@ -24,7 +30,7 @@ describe('Set object property', () => {
         });
 
         it('should set key value using dot notation if key DOES NOT exist', () => {
-            const result = setObjectProperty(
+            const result = setObjectKeyValue(
                 '$.purchase.isTaxable',
                 false,
                 nestedObject,
@@ -46,17 +52,9 @@ describe('Set object property', () => {
     });
 
     describe('flat object', () => {
-        it('should throw an error if dot notation is used', () => {
-            expect(() => setObjectProperty(
-                '$.purchase.amountTotalDiscounted',
-                201,
-                flatObject,
-            )).toThrowError('Cannot use dot notation on flat object');
-        });
-
         it('should replace key value if key exists', () => {
-            const result = setObjectProperty(
-                'firstName',
+            const result = setObjectKeyValue(
+                '$.firstName',
                 'Jane',
                 flatObject,
             );
@@ -69,8 +67,8 @@ describe('Set object property', () => {
         });
 
         it('should set key value if key DOES NOT exist', () => {
-            const result = setObjectProperty(
-                'gender',
+            const result = setObjectKeyValue(
+                '$.gender',
                 'male',
                 flatObject,
             );

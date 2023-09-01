@@ -2,7 +2,7 @@
 
 import {ApplyRulesResponse, Condition, Effect, Rule, RuleError, UnknownObject,} from './types';
 import {Action, Operator} from './enums';
-import {getObjectKeyValue, setObjectProperty} from "./helpers";
+import {getObjectKeyValue, setObjectKeyValue, isPlainObject} from "./helpers";
 
 export class RuleEngine {
     private readonly rules: Rule;
@@ -47,34 +47,6 @@ export class RuleEngine {
     }
 
     /**
-     * Check whether type of `value` is an object.
-     */
-    isPlainObject(value: unknown): value is UnknownObject {
-        return typeof value === 'object' && !Array.isArray(value) && value !== null;
-    }
-
-    /**
-     * Takes a `key` string that allows the dot notation syntax to access object
-     * properties (`object.key.subKey`), and an object. It splits the key on the
-     * `"."` character, and attempts to recursively access the properties of the
-     * provided object.
-     * TODO: revisit use of `keyof {}` here. We should use UnknownObject
-     * TODO: also revisit lots of casting here (line 80 etc)
-     */
-    getObjectKeyValue<T extends {}>(key: string, object: T): string | string[] | number {
-        const keys: string[] = key.split(".");
-        const value = keys.reduce((accumulator, currentValue: string) => {
-            if (this.isPlainObject(accumulator) && accumulator[currentValue as keyof {}]) {
-                return accumulator[currentValue as keyof {}];
-            }
-
-            throw new Error(`Object has no ${currentValue} key`);
-        }, object);
-
-        return <string | string[] | number><unknown>value;
-    }
-
-    /**
      * The first character of the `field` string is checked to see if it equals
      * `"$."`. e.g. if the string is `"$.downloadedTracks"`, it uses the
      * `getObjectKeyValue` method to check the provided object for a `downloadedTracks`
@@ -86,22 +58,8 @@ export class RuleEngine {
      * across different objects.
      */
     getFieldValue(field: string | number, object: UnknownObject, fallbackObject?: UnknownObject): unknown {
-        if (typeof field === 'string') {
-            // TODO: consider breaking this function into `getLeftValue` and `getRightValue`
-            // Reason: get left should always reference an object key with "$."
-            // but getRight can take just a value e.g. $.tags CONTAINS 'rap'.
-            if (field.slice(0, 2) === '$.') {
-                const value = getObjectKeyValue(field, object, false);
-                if (value || value === '') return value;
-
-                if (!fallbackObject)
-                    throw new Error(
-                        `Object has no ${field.substring(2)} key, and no fallback object was provided`,
-                    );
-
-                return getObjectKeyValue(field, fallbackObject);
-            }
-        }
+        if (typeof field === 'string' && field.slice(0, 2) === '$.')
+            return getObjectKeyValue(field, object, fallbackObject);
 
         return field;
     }
@@ -160,37 +118,34 @@ export class RuleEngine {
                 }
 
                 throw new Error('You may check if array contains numbers or strings only');
-            default:
-                throw new Error(`No guard found for ${operator} operator`);
         }
     }
 
-    performArithmeticOperation(
-        object: UnknownObject,
-        effect: Effect,
-    ): UnknownObject {
+    performArithmeticOperation(object: UnknownObject, effect: Effect): UnknownObject {
         const { action } = effect;
         const { property } = effect;
 
         if (!property)
             throw new Error(`Cannot ${action} where effect property is undefined`);
 
-        const propertyValue = getObjectKeyValue(property, object);
+        const propertyValue = this.getFieldValue(property, object);
 
-        if (typeof propertyValue !== 'number')
+        if (
+            typeof propertyValue !== 'number'
+            || !effect?.value
+            || !Number.isInteger(effect.value)
+        ) {
             throw new Error(`Cannot ${action} a non-integer`);
-
-        if (!effect?.value || !Number.isInteger(effect.value))
-            throw new Error("Effect value is either undefined or not a number");
+        }
 
         if (![Action.INCREMENT, Action.DECREMENT].includes(action))
-            throw new Error(`${action} is invalid for arithmetic operation`);
+            throw new Error(`${action} action is invalid for arithmetic operation`);
 
         const newValue = action === Action.INCREMENT
             ? propertyValue + effect.value
             : propertyValue - effect.value;
 
-        return setObjectProperty(property, newValue, object);
+        return setObjectKeyValue(property, newValue, object);
     }
 
     runEffect(target: UnknownObject | Array<UnknownObject>, effect: Effect): UnknownObject | Action {
@@ -199,14 +154,14 @@ export class RuleEngine {
         switch (effect.action) {
             case Action.INCREMENT:
             case Action.DECREMENT:
-                if (this.isPlainObject(clonedTarget)) {
+                if (isPlainObject(clonedTarget)) {
                     return this.performArithmeticOperation(clonedTarget, effect);
                 }
                 throw new Error(`Cannot perform ${effect.action} action on non-object`);
             case Action.OMIT:
                 return effect.action;
             default:
-                throw new Error(`No handler defined for ${effect.action} in runEffect`);
+                throw new Error(`No handler defined for "${effect.action}" action in runEffect`);
         }
     }
 

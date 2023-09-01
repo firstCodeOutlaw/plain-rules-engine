@@ -1,10 +1,23 @@
 import {RuleEngine} from "../src";
 import {Effect} from "../src/types";
-import {productWithPriceGreaterThan120, salesRules} from "./mock/objects";
+import {cart, productWithPriceGreaterThan120, RandomCart, salesRules} from "./mock/objects";
+import {Action} from "../src/enums";
 
 describe('Perform arithmetic operation', () => {
     const ruleEngine = new RuleEngine(salesRules);
     const { effect } = ruleEngine.getRule('addValueAddedTax');
+
+    it('should throw an error if effect action is not INCREMENT or DECREMENT', () => {
+        const clonedEffect = structuredClone<Effect>(effect);
+        clonedEffect.action = Action.OMIT;
+        const errorFunction = () => ruleEngine.performArithmeticOperation(
+            productWithPriceGreaterThan120,
+            clonedEffect,
+        );
+
+        expect(errorFunction)
+            .toThrowError('omit action is invalid for arithmetic operation');
+    });
 
     it('should throw an error if effect has no "property" key', () => {
         const clonedEffect = structuredClone<Effect>(effect);
@@ -26,7 +39,7 @@ describe('Perform arithmetic operation', () => {
             clonedEffect,
         );
 
-        expect(errorFunction).toThrowError('Effect value is either undefined or not a number');
+        expect(errorFunction).toThrowError('Cannot increment a non-integer');
     });
 
     it('should throw an error if effect.value is not a number', () => {
@@ -38,20 +51,10 @@ describe('Perform arithmetic operation', () => {
             clonedEffect,
         );
 
-        expect(errorFunction).toThrowError('Effect value is either undefined or not a number');
-    });
-
-    it('should throw an error if targetObject is not an object', () => {
-        const errorFunction = () => ruleEngine.performArithmeticOperation(
-            // @ts-expect-error: first argument should an object
-            'string',
-            effect,
-        );
-
         expect(errorFunction).toThrowError('Cannot increment a non-integer');
     });
 
-    it('should throw an error if property "price" does not exist on target object', () => {
+    it('should throw an error if effect.property does not exist on target object', () => {
         const clonedTargetObject = structuredClone(productWithPriceGreaterThan120);
         // @ts-expect-error: 'price' is not optional. TS compiler throws an error because we want to delete it
         delete clonedTargetObject.price;
@@ -61,10 +64,10 @@ describe('Perform arithmetic operation', () => {
         );
 
         expect(errorFunction)
-            .toThrowError('Cannot increment a non-integer');
+            .toThrowError('Object has no price key, and no fallback object was provided');
     });
 
-    it('should perform arithmetic operation on object', () => {
+    it('should perform INCREMENT action on object', () => {
         const priceBeforeArithmeticOperation = productWithPriceGreaterThan120.price;
         const result = ruleEngine.performArithmeticOperation(
             productWithPriceGreaterThan120,
@@ -74,10 +77,16 @@ describe('Perform arithmetic operation', () => {
 
         expect(priceBeforeArithmeticOperation).toBe(128);
         expect(priceAfterArithmeticOperation).toBe(136);
-        expect(result).toStrictEqual({
-            product: 'banana 3kg',
-            price: 136,
-            isTaxable: 1,
-        });
+    });
+
+    it('should perform DECREMENT action on object', () => {
+        const amountBeforeArithmeticOperation = cart.purchase.amountTotalDiscounted;
+        const ruleEngine = new RuleEngine(salesRules);
+        const { effect } = ruleEngine.getRule('applyStudentDiscount');
+        const result = ruleEngine.performArithmeticOperation(cart, effect) as RandomCart;
+        const amountAfterArithmeticOperation = result.purchase.amountTotalDiscounted;
+
+        expect(amountBeforeArithmeticOperation).toBe(216);
+        expect(amountAfterArithmeticOperation).toBe(211);
     });
 });
