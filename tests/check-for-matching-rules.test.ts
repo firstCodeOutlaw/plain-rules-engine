@@ -1,6 +1,4 @@
-import {RuleEngine} from "../src";
-import {type Rule} from "../src/types";
-import {Action, Operator} from "../src/enums";
+import {Action, Operator, RuleEngine, type Rule} from "../src";
 import {
     loggedInUserNormal,
     loggedInUserUnderage,

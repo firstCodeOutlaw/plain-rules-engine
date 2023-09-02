@@ -1,6 +1,5 @@
 import Rules from './mock/rules';
-import {RuleEngine} from "../src";
-import type {Rule} from "../src/types";
+import {RuleEngine, type Rule} from "../src";
 import * as Helpers from '../src/helpers';
 import {safeTrack} from "./mock/objects";
 

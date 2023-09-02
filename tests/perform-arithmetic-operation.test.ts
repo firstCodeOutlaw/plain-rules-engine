@@ -1,7 +1,5 @@
-import {RuleEngine} from "../src";
-import {Effect} from "../src/types";
+import {Action, Effect, RuleEngine} from "../src";
 import {cart, productWithPriceGreaterThan120, RandomCart, salesRules} from "./mock/objects";
-import {Action} from "../src/enums";
 
 describe('Perform arithmetic operation', () => {
     const ruleEngine = new RuleEngine(salesRules);

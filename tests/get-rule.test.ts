@@ -1,6 +1,5 @@
 import Rules from './mock/rules';
-import {RuleEngine} from "../src";
-import type {Rule} from "../src/types";
+import {RuleEngine, type Rule} from "../src";
 
 describe('Get rule', () => {
     const rules: Rule = JSON.parse(Rules);

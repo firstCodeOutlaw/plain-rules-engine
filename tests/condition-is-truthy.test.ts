@@ -1,7 +1,5 @@
 import Rules from './mock/rules';
-import {RuleEngine} from "../src";
-import type {Rule} from "../src/types";
-import {Operator} from "../src/enums";
+import {Operator, RuleEngine, type Rule} from "../src";
 
 const errorMessage = 'Failed arithmetic comparison on one or more non-integer values';
 

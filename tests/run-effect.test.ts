@@ -1,4 +1,4 @@
-import {RuleEngine} from "../src";
+import {Action, Effect, RuleEngine} from "../src";
 import {
     type RandomCart,
     type RandomProduct,
@@ -7,8 +7,6 @@ import {
     salesRules,
     safeTrack, trackWithStrongLanguage, musicTrackRules, ruleWithUnknownAction
 } from "./mock/objects";
-import {Effect} from "../src/types";
-import {Action} from "../src/enums";
 
 describe('Run effect', () => {
     describe('Action.INCREMENT', () => {
