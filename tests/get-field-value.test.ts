@@ -1,36 +1,39 @@
 import Rules from './mock/rules';
-import {RuleEngine, type Rule} from "../src";
+import { RuleEngine, type Rule } from '../src';
 import * as Helpers from '../src/helpers';
-import {safeTrack} from "./mock/objects";
+import { safeTrack } from './mock/objects';
 
 const getObjectKeyValueMock = jest
-    .spyOn(Helpers, 'getObjectKeyValue')
-    .mockImplementation();
+  .spyOn(Helpers, 'getObjectKeyValue')
+  .mockImplementation();
 
 describe('Get field value', () => {
-    const rules: Rule = JSON.parse(Rules);
-    const ruleEngine = new RuleEngine(rules);
+  const rules: Rule = JSON.parse(Rules);
+  const ruleEngine = new RuleEngine(rules);
 
-    describe('field is of type "string"', () => {
-        afterAll(() => {
-            getObjectKeyValueMock.mockClear();
-        });
-
-        it('should call getObjectKeyValue', () => {
-            ruleEngine.getFieldValue('$.title', safeTrack);
-
-            expect(getObjectKeyValueMock).toHaveBeenCalledTimes(1);
-            expect(getObjectKeyValueMock)
-                .toHaveBeenCalledWith('$.title', safeTrack, undefined);
-        });
+  describe('field is of type "string"', () => {
+    afterAll(() => {
+      getObjectKeyValueMock.mockClear();
     });
 
-    describe('field is NOT of type "string"', () => {
-        it('should return the key as is', () => {
-            const field = 12;
-            const value = ruleEngine.getFieldValue(field, safeTrack);
+    it('should call getObjectKeyValue', () => {
+      ruleEngine.getFieldValue('$.title', safeTrack);
 
-            expect(value).toBe(12);
-        });
+      expect(getObjectKeyValueMock).toHaveBeenCalledTimes(1);
+      expect(getObjectKeyValueMock).toHaveBeenCalledWith(
+        '$.title',
+        safeTrack,
+        undefined,
+      );
     });
+  });
+
+  describe('field is NOT of type "string"', () => {
+    it('should return the key as is', () => {
+      const field = 12;
+      const value = ruleEngine.getFieldValue(field, safeTrack);
+
+      expect(value).toBe(12);
+    });
+  });
 });

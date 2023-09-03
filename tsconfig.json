@@ -7,10 +7,6 @@
     "outDir": "./build",
     "noImplicitAny": true
   },
-  "include": [
-    "src/**/*",
-    "tests/**/*"
-  ],
+  "include": ["src/**/*", "tests/**/*"],
   "exclude": ["node_modules"]
 }
-
