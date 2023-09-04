@@ -20,6 +20,8 @@ export class RuleEngine {
   private readonly rules: Rule;
 
   constructor(rules: Rule) {
+    // TODO: add rule validator to validate rules passed to this class
+    // we want to throw error for malformed rules
     this.rules = rules;
   }
 
