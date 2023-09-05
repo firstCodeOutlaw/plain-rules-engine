@@ -3,7 +3,7 @@ import { Action, Operator, type Rule } from '../../src';
 export type RandomProduct = {
   product: string;
   price: number;
-  isTaxable: number;
+  isTaxable: boolean;
 };
 
 export type RandomCart = {
@@ -19,9 +19,7 @@ export const salesRules: Rule = {
   addValueAddedTax: {
     conditions: [
       ['$.price', Operator.GREATER_THAN, 120],
-      // TODO: consider ['$.taxable', 'equals', true] boolean. Requires updating getFieldValue and conditionIsTruthy
-      // to take boolean value. Note that update to any method means test must be added
-      ['$.isTaxable', Operator.EQUALS, 1],
+      ['$.isTaxable', Operator.EQUALS, true],
     ],
     effect: {
       action: Action.INCREMENT,
@@ -72,13 +70,13 @@ export const ruleWithUnknownAction: Rule = {
 export const productWithPriceGreaterThan120: RandomProduct = {
   product: 'banana 3kg',
   price: 128,
-  isTaxable: 1,
+  isTaxable: true,
 };
 
 export const productWithPriceLessThan120: RandomProduct = {
   product: 'apple 3kg',
   price: 88,
-  isTaxable: 1,
+  isTaxable: true,
 };
 
 export const cart: RandomCart = {

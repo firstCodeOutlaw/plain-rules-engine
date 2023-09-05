@@ -3,6 +3,7 @@ import { type Action, type Operator } from './enums';
 export type RuleError = {
   message: string;
 };
+
 export type UnknownObject = Record<string, unknown>;
 
 export type ApplyRulesResponse = {
@@ -17,7 +18,14 @@ export type Effect = {
   error?: RuleError;
 };
 
-export type Condition = [string, Operator, string | number];
+export type ValidOperand =
+  | number
+  | string
+  | unknown[]
+  | boolean
+  | UnknownObject;
+
+export type Condition = [string, Operator, ValidOperand];
 
 export type Rule = Record<
   string,

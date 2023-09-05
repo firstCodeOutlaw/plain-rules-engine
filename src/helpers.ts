@@ -1,4 +1,4 @@
-import type { UnknownObject } from './types';
+import type { UnknownObject, ValidOperand } from './types';
 import set from 'lodash/set';
 import get from 'lodash/get';
 
@@ -7,8 +7,8 @@ export function isPlainObject(value: unknown): value is UnknownObject {
 }
 
 export function runArithmeticComparisonGuard(
-  left: number | string | Array<number | string>,
-  right: number | string,
+  left: ValidOperand,
+  right: ValidOperand,
 ): void {
   if (typeof left !== 'number' || typeof right !== 'number')
     throw new Error('Both operands must be numbers');

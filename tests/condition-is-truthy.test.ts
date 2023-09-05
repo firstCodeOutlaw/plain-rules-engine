@@ -172,68 +172,7 @@ describe('Condition is truthy', () => {
   });
 
   describe('EQUALS operator', () => {
-    describe('where either left or right field are not of the same type', () => {
-      it('should throw an error if left is number and right is string', () => {
-        expect(() =>
-          ruleEngine.conditionIsTruthy(20, Operator.EQUALS, '20'),
-        ).toThrowError('Compared values must be of the same type');
-      });
-
-      it('should throw an error if left is string and right is number', () => {
-        expect(() =>
-          ruleEngine.conditionIsTruthy('20', Operator.EQUALS, 20),
-        ).toThrowError('Compared values must be of the same type');
-      });
-    });
-
-    describe('where any of left or right field is not of type number or string', () => {
-      it('should throw an error for arrays', () => {
-        expect(() => {
-          // @ts-expect-error: conditionIsTruthy() cannot take arguments of type 'array'
-          ruleEngine.conditionIsTruthy([2, 3], Operator.EQUALS, [2, 3]);
-        }).toThrowError(
-          'Compared values must be of the same type number or string',
-        );
-      });
-
-      it('should throw an error for objects', () => {
-        expect(() => {
-          // @ts-expect-error: conditionIsTruthy() cannot take arguments of type 'object'
-          ruleEngine.conditionIsTruthy({ a: 1, b: 2 }, Operator.EQUALS, {
-            a: 1,
-            b: 2,
-          });
-        }).toThrowError(
-          'Compared values must be of the same type number or string',
-        );
-      });
-
-      it('should throw an error for functions', () => {
-        const funcA = (): string => 'This is function A';
-        const funcB = (): string => 'This is function B';
-
-        expect(() => {
-          // @ts-expect-error: conditionIsTruthy() cannot take function arguments
-          ruleEngine.conditionIsTruthy(funcA, Operator.EQUALS, funcB);
-        }).toThrowError(
-          'Compared values must be of the same type number or string',
-        );
-      });
-    });
-
-    describe('where left and right field are of the same type', () => {
-      it('should return true if both left and right numbers are equal', () => {
-        const result = ruleEngine.conditionIsTruthy(500, Operator.EQUALS, 500);
-
-        expect(result).toBe(true);
-      });
-
-      it('should return true if both left and right numbers are not equal', () => {
-        const result = ruleEngine.conditionIsTruthy(500, Operator.EQUALS, 501);
-
-        expect(result).toBe(false);
-      });
-
+    describe('string', () => {
       it('should return true if both left and right strings are equal', () => {
         const result = ruleEngine.conditionIsTruthy(
           'green',
@@ -254,6 +193,94 @@ describe('Condition is truthy', () => {
         expect(result).toBe(false);
       });
     });
+
+    describe('number', () => {
+      it('should return true if both left and right numbers are equal', () => {
+        const result = ruleEngine.conditionIsTruthy(500, Operator.EQUALS, 500);
+
+        expect(result).toBe(true);
+      });
+
+      it('should return false if both left and right numbers are not equal', () => {
+        const result = ruleEngine.conditionIsTruthy(500, Operator.EQUALS, 501);
+
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('object', () => {
+      it('should return true if both left and right objects are equal', () => {
+        const object1 = { a: 1, b: 2 };
+        const object2 = { a: 1, b: 2 };
+        const result = ruleEngine.conditionIsTruthy(
+          object1,
+          Operator.EQUALS,
+          object2,
+        );
+
+        expect(result).toBe(true);
+      });
+
+      it('should return false if both left and right objects are not equal', () => {
+        const object1 = { a: 1, b: 2 };
+        const object2 = { a: 1, b: 5 };
+        const result = ruleEngine.conditionIsTruthy(
+          object1,
+          Operator.EQUALS,
+          object2,
+        );
+
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('array', () => {
+      it('should return true if both left and right arrays are equal', () => {
+        const array1 = ['first', { a: 1, b: 2 }];
+        const array2 = ['first', { a: 1, b: 2 }];
+        const result = ruleEngine.conditionIsTruthy(
+          array1,
+          Operator.EQUALS,
+          array2,
+        );
+
+        expect(result).toBe(true);
+      });
+
+      it('should return false if both left and right arrays are not equal', () => {
+        const array1 = ['first', { a: 1, b: 2 }];
+        const array2 = ['second', { a: 1, b: 2 }];
+        const result = ruleEngine.conditionIsTruthy(
+          array1,
+          Operator.EQUALS,
+          array2,
+        );
+
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('boolean', () => {
+      it('should return true if both left and right booleans are equal', () => {
+        const result = ruleEngine.conditionIsTruthy(
+          true,
+          Operator.EQUALS,
+          true,
+        );
+
+        expect(result).toBe(true);
+      });
+
+      it('should return false if both left and right booleans are not equal', () => {
+        const result = ruleEngine.conditionIsTruthy(
+          true,
+          Operator.EQUALS,
+          false,
+        );
+
+        expect(result).toBe(false);
+      });
+    });
   });
 
   describe('CONTAINS operator', () => {
@@ -263,13 +290,10 @@ describe('Condition is truthy', () => {
       ).toThrowError('Left field should be an array when operator is CONTAINS');
     });
 
-    it('should throw an error if right is an array', () => {
-      expect(() => {
-        // @ts-expect-error: third argument should be a number of string
-        ruleEngine.conditionIsTruthy('text', Operator.CONTAINS, [2, 3]);
-      }).toThrowError(
-        'Left field should be an array when operator is CONTAINS',
-      );
+    it('should throw an error if right is boolean', () => {
+      expect(() =>
+        ruleEngine.conditionIsTruthy([1, 2], Operator.CONTAINS, true),
+      ).toThrowError('Cannot check whether array contains boolean');
     });
 
     describe('array of mixed values', () => {
@@ -336,6 +360,15 @@ describe('Condition is truthy', () => {
 
         expect(result).toBe(true);
       });
+    });
+  });
+
+  describe('Invalid operator', () => {
+    it('should throw an error', () => {
+      expect(() => {
+        // @ts-expect-error: "Invalid operator" is not a type of Operator
+        ruleEngine.conditionIsTruthy(5, 'Invalid operator', 3);
+      }).toThrowError('No handler defined for operator');
     });
   });
 });

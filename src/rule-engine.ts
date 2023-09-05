@@ -7,6 +7,7 @@ import type {
   Rule,
   RuleError,
   UnknownObject,
+  ValidOperand,
 } from './types';
 import { Action, Operator } from './enums';
 import {
@@ -15,6 +16,7 @@ import {
   runArithmeticComparisonGuard,
   setObjectKeyValue,
 } from './helpers';
+import isEqual from 'lodash/isEqual';
 
 export class RuleEngine {
   private readonly rules: Rule;
@@ -26,8 +28,12 @@ export class RuleEngine {
   }
 
   /**
-   * Fetches a rule from `rules.json` using the rule name. If no rule
-   * matches the provided rule name, an error is thrown.
+   * Fetches a rule that is already loaded into this rule engine using the name
+   * of the rule e.g. in
+   * `{
+   *     trackHasStrongLanguage: {...}
+   * }`,
+   * `getRule('trackHasStrongLanguage')` would return `{...}`
    */
   getRule(ruleName: string): { conditions: Condition[]; effect: Effect } {
     if (this.rules[ruleName] != null) return this.rules[ruleName];
@@ -36,17 +42,19 @@ export class RuleEngine {
 
   /**
    * The first character of the `field` string is checked to see if it equals
-   * `"$."`. e.g. if the string is `"$.downloadedTracks"`, it uses the
-   * `getObjectKeyValue` method to check the provided object for a `downloadedTracks`
+   * `"$."`. e.g. if the string is `"$.tags"`, it uses the
+   * `getObjectKeyValue` method to check the provided object for a `tags`
    * key. If the key is found, the value is returned. Else, it checks the fallback
-   * object for a `downloadedTracks` key. However, if the provided `field` does
+   * object for a `tags` key.
+   *
+   * However, if the provided `field` does
    * not start with `"$."`, that string is returned as is.
    *
    * You should provide a fallback object where one or more rules compare values
    * across different objects.
    */
   getFieldValue<T extends UnknownObject, F extends UnknownObject>(
-    field: string | number,
+    field: ValidOperand,
     object: T,
     fallbackObject?: F,
   ): unknown {
@@ -57,16 +65,13 @@ export class RuleEngine {
   }
 
   /**
-   * Constructs a string expression and evaluates whether the expression is truthy.
-   * It uses `Function()`, a close relative to JavaScript `eval()`, to evaluate the
-   * expression based on any of the operations defined under `Operation` enum.
-   * This function can only compare numbers and strings (and arrays only when the
-   * operator is CONTAINS).
+   * Compares the `left` and `right` operands based on the `operator`, and returns
+   * a boolean.
    */
   conditionIsTruthy(
-    left: number | string | Array<number | string>,
+    left: ValidOperand,
     operator: Operator,
-    right: number | string,
+    right: ValidOperand,
   ): boolean {
     switch (operator) {
       case Operator.LESS_THAN:
@@ -82,27 +87,29 @@ export class RuleEngine {
         runArithmeticComparisonGuard(left, right);
         return left >= right;
       case Operator.EQUALS:
-        if (Number.isInteger(left) && Number.isInteger(right))
-          return left === right;
-
         if (typeof left === 'string' && typeof right === 'string')
           return left.toLowerCase() === right.toLowerCase();
 
-        throw new Error(
-          'Compared values must be of the same type number or string',
-        );
+        return isEqual(left, right);
       case Operator.CONTAINS:
         if (!Array.isArray(left))
           throw new Error(
             'Left field should be an array when operator is CONTAINS',
           );
 
+        if (typeof right === 'boolean')
+          throw new Error('Cannot check whether array contains boolean');
+
         return left.includes(right);
       default:
-        throw new Error(`No handler defined for operator`);
+        throw new Error('No handler defined for operator');
     }
   }
 
+  /**
+   * Performs a decrement or increment action on the provided object as defined
+   * in the rule effect
+   */
   performArithmeticOperation<T extends UnknownObject>(
     object: T,
     effect: Effect,
@@ -136,6 +143,11 @@ export class RuleEngine {
     return setObjectKeyValue<T>(property, newValue, object);
   }
 
+  /**
+   * Runs applicable effect against the provided `target` object or array of objects.
+   * When `target` is an array of objects, then the action is definitely OMIT or
+   * another action that aims at arrays.
+   */
   runEffect<T extends UnknownObject>(
     target: T | T[],
     effect: Effect,
@@ -158,6 +170,11 @@ export class RuleEngine {
     }
   }
 
+  /**
+   * Checks the rules loaded into this rule engine against the provided `object` or
+   * `fallback` object, and returns an array of rule names whose conditions are satisfied
+   * by the object.
+   */
   checkForMatchingRules<U extends UnknownObject, F extends UnknownObject>(
     object: U,
     fallback?: F,
@@ -200,6 +217,10 @@ export class RuleEngine {
     return matchedRules;
   }
 
+  /**
+   * Loops through the provided array of objects, checks for matching rules for
+   * each object, and applies the applicable rule effect on each object.
+   */
   applyRules<U extends UnknownObject, F extends UnknownObject>(
     objects: U[],
     fallback?: F,
