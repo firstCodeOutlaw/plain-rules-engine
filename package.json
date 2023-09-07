@@ -1,6 +1,6 @@
 {
   "name": "plain-rules-engine",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A simple rules engine written in Typescript",
   "repository": {
     "type": "git",
@@ -29,7 +29,7 @@
     "/build"
   ],
   "scripts": {
-    "build": "npx tsc",
+    "build": "rm -rf ./build && npx tsc",
     "pretty-check": "npx prettier . --check",
     "pretty-format": "npx prettier . --write",
     "test": "jest --coverage",
