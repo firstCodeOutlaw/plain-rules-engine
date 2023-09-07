@@ -5,7 +5,7 @@
 
 ## Introduction
 
-Plain Rules Engine is a lightweight TypeScript library for creating and evaluating simple business rules in Node.js
+Plain Rules Engine is a TypeScript library for creating and evaluating simple business rules in Node.js
 applications. It provides a flexible way to define and apply rules to your data.
 
 ## Features

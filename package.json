@@ -2,6 +2,27 @@
   "name": "plain-rules-engine",
   "version": "1.0.0",
   "description": "A simple rules engine written in Typescript",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/firstCodeOutlaw/plain-rules-engine"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "rules",
+    "rules-engine",
+    "rule-processing",
+    "rule-execution",
+    "rule-evaluation",
+    "decision-engine",
+    "TypeScript-rules",
+    "logic-engine",
+    "conditional-processing",
+    "data-rules",
+    "business-logic",
+    "rules-framework",
+    "type-safe-rules"
+  ],
+  "author": "Benjamin Ayangbola",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -14,11 +35,6 @@
     "test": "jest --coverage",
     "prepublishOnly": "npm run build && npm test"
   },
-  "author": {
-    "name": "Benjamin Ayangbola",
-    "url": "benjamin-ayangbola.medium.com"
-  },
-  "license": "Apache-2.0",
   "devDependencies": {
     "@tsconfig/node16": "^16.1.1",
     "@types/jest": "^29.5.3",
@@ -40,5 +56,8 @@
   },
   "dependencies": {
     "lodash": "^4.17.21"
+  },
+  "engines": {
+    "node": "18"
   }
 }
