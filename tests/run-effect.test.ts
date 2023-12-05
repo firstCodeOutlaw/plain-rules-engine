@@ -9,6 +9,7 @@ import {
   trackWithStrongLanguage,
   musicTrackRules,
   ruleWithUnknownAction,
+  otherMusicTrackRules,
 } from './mock/objects';
 
 describe('Run effect', () => {
@@ -66,6 +67,43 @@ describe('Run effect', () => {
       expect(() => ruleEngine.runEffect(cartsArray, effect)).toThrowError(
         'Cannot perform decrement action on non-object',
       );
+    });
+  });
+
+  describe('Action.ADD', () => {
+    let spyHandleAddAction: jest.SpyInstance;
+    let ruleEngine: RuleEngine;
+
+    afterEach(() => {
+      spyHandleAddAction.mockClear();
+    });
+
+    it('should call handleAddAction', () => {
+      ruleEngine = new RuleEngine(otherMusicTrackRules);
+      spyHandleAddAction = jest.spyOn(ruleEngine, 'handleAddAction');
+      const { effect } = ruleEngine.getRule('trackShouldBeMarkedAsDownloaded');
+      ruleEngine.runEffect(safeTrack, effect);
+
+      expect(spyHandleAddAction).toHaveBeenCalledTimes(1);
+      expect(spyHandleAddAction).toHaveBeenCalledWith(
+        {
+          title: 'Heal the World',
+          artist: 'Michael Jackson',
+          year: 1991,
+          album: 'Dangerous',
+          tags: ['pop', 'society'],
+        },
+        effect,
+      );
+    });
+
+    it('should throw an error if target is not an object', () => {
+      ruleEngine = new RuleEngine(otherMusicTrackRules);
+      const { effect } = ruleEngine.getRule('trackShouldBeMarkedAsDownloaded');
+
+      expect(() => {
+        ruleEngine.runEffect([], effect);
+      }).toThrowError();
     });
   });
 

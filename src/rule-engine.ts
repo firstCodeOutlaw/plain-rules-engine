@@ -11,12 +11,14 @@ import type {
 } from './types';
 import { Action, Operator } from './enums';
 import {
+  validateApplyRulesFeedback,
   getObjectKeyValue,
   isPlainObject,
   runArithmeticComparisonGuard,
   setObjectKeyValue,
 } from './helpers';
 import isEqual from 'lodash/isEqual';
+import set from 'lodash/set';
 
 export class RuleEngine {
   private readonly rules: Rule;
@@ -110,10 +112,11 @@ export class RuleEngine {
    * Performs a decrement or increment action on the provided object as defined
    * in the rule effect
    */
-  performArithmeticOperation<T extends UnknownObject>(
+  handleArithmeticAction<T extends UnknownObject>(
     object: T,
     effect: Effect,
   ): T {
+    const objectClone = structuredClone(object);
     const { action } = effect;
     const { property } = effect;
 
@@ -122,12 +125,12 @@ export class RuleEngine {
         `Cannot ${action} where effect property is undefined or invalid`,
       );
 
-    const propertyValue = this.getFieldValue(property, object);
+    const propertyValue = this.getFieldValue(property, objectClone);
 
     if (
       typeof propertyValue !== 'number' ||
       effect.value == null ||
-      !Number.isInteger(effect.value)
+      !(Number.isInteger(effect.value) && typeof effect.value === 'number')
     ) {
       throw new Error(`Cannot ${action} a non-integer`);
     }
@@ -140,7 +143,26 @@ export class RuleEngine {
         ? propertyValue + effect.value
         : propertyValue - effect.value;
 
-    return setObjectKeyValue<T>(property, newValue, object);
+    return setObjectKeyValue<T>(property, newValue, objectClone);
+  }
+
+  /**
+   * Adds or replaces a key-value in the provided object as defined in the rule
+   * effect.
+   */
+  handleAddAction<T extends UnknownObject>(object: T, effect: Effect): T {
+    const objectClone = structuredClone(object);
+
+    if (
+      effect.property == null ||
+      effect.property === '' ||
+      effect.value === undefined
+    )
+      throw new Error(
+        'Cannot set object key because effect value or property is undefined/invalid',
+      );
+
+    return set(objectClone, effect.property, effect.value);
   }
 
   /**
@@ -152,13 +174,16 @@ export class RuleEngine {
     target: T | T[],
     effect: Effect,
   ): T | Action {
-    const clonedTarget = structuredClone(target);
-
     switch (effect.action) {
       case Action.INCREMENT:
       case Action.DECREMENT:
-        if (isPlainObject(clonedTarget)) {
-          return this.performArithmeticOperation<T>(clonedTarget, effect);
+        if (isPlainObject(target)) {
+          return this.handleArithmeticAction<T>(target, effect);
+        }
+        throw new Error(`Cannot perform ${effect.action} action on non-object`);
+      case Action.ADD:
+        if (isPlainObject(target)) {
+          return this.handleAddAction(target, effect);
         }
         throw new Error(`Cannot perform ${effect.action} action on non-object`);
       case Action.OMIT:
@@ -255,8 +280,8 @@ export class RuleEngine {
             omitted.push([object, { message: effect.error.message }]);
             continue;
           default:
-            // push to results array by default
-            results.push(object);
+            // push feedback to results array by default
+            results.push(validateApplyRulesFeedback(feedback));
         }
       }
     }

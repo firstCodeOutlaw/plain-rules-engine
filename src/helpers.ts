@@ -1,6 +1,7 @@
 import type { UnknownObject, ValidOperand } from './types';
 import set from 'lodash/set';
 import get from 'lodash/get';
+import { Action } from './enums';
 
 export function isPlainObject(value: unknown): value is UnknownObject {
   return typeof value === 'object' && !Array.isArray(value) && value !== null;
@@ -50,4 +51,20 @@ export function getObjectKeyValue<
     );
 
   return get(fallbackObject, dotNotationKey);
+}
+
+/**
+ * This function is a helper to applyRules method in the RuleEngine class.
+ */
+export function validateApplyRulesFeedback(
+  feedback: UnknownObject | Action,
+): UnknownObject {
+  if (typeof feedback === 'string' && Object.values(Action).includes(feedback))
+    throw new Error(
+      'Caught an action that has no applyRules switch case. Please define one',
+    );
+
+  if (!isPlainObject(feedback)) throw new Error('Feedback must be an object');
+
+  return feedback;
 }

@@ -14,7 +14,7 @@ describe('Perform arithmetic operation', () => {
     const clonedEffect = structuredClone<Effect>(effect);
     clonedEffect.action = Action.OMIT;
     const errorFunction = (): RandomProduct =>
-      ruleEngine.performArithmeticOperation(
+      ruleEngine.handleArithmeticAction(
         productWithPriceGreaterThan120,
         clonedEffect,
       );
@@ -28,7 +28,7 @@ describe('Perform arithmetic operation', () => {
     const clonedEffect = structuredClone<Effect>(effect);
     delete clonedEffect.property;
     const errorFunction = (): RandomProduct =>
-      ruleEngine.performArithmeticOperation(
+      ruleEngine.handleArithmeticAction(
         productWithPriceGreaterThan120,
         clonedEffect,
       );
@@ -42,7 +42,7 @@ describe('Perform arithmetic operation', () => {
     const clonedEffect = structuredClone<Effect>(effect);
     delete clonedEffect.value;
     const errorFunction = (): RandomProduct =>
-      ruleEngine.performArithmeticOperation(
+      ruleEngine.handleArithmeticAction(
         productWithPriceGreaterThan120,
         clonedEffect,
       );
@@ -52,10 +52,9 @@ describe('Perform arithmetic operation', () => {
 
   it('should throw an error if effect.value is not a number', () => {
     const clonedEffect = structuredClone<Effect>(effect);
-    // @ts-expect-error: effect value should be a number
     clonedEffect.value = 'string';
     const errorFunction = (): RandomProduct =>
-      ruleEngine.performArithmeticOperation(
+      ruleEngine.handleArithmeticAction(
         productWithPriceGreaterThan120,
         clonedEffect,
       );
@@ -68,7 +67,7 @@ describe('Perform arithmetic operation', () => {
     // @ts-expect-error: 'price' is not optional. TS compiler throws an error because we want to delete it
     delete clonedTargetObject.price;
     const errorFunction = (): RandomProduct =>
-      ruleEngine.performArithmeticOperation(clonedTargetObject, effect);
+      ruleEngine.handleArithmeticAction(clonedTargetObject, effect);
 
     expect(errorFunction).toThrowError(
       'Object has no price key, and no fallback object was provided',
@@ -77,7 +76,7 @@ describe('Perform arithmetic operation', () => {
 
   it('should perform INCREMENT action on object', () => {
     const priceBeforeArithmeticOperation = productWithPriceGreaterThan120.price;
-    const result = ruleEngine.performArithmeticOperation(
+    const result = ruleEngine.handleArithmeticAction(
       productWithPriceGreaterThan120,
       effect,
     );
@@ -91,7 +90,7 @@ describe('Perform arithmetic operation', () => {
     const amountBeforeArithmeticOperation = cart.purchase.amountTotalDiscounted;
     const ruleEngine = new RuleEngine(salesRules);
     const { effect } = ruleEngine.getRule('applyStudentDiscount');
-    const result = ruleEngine.performArithmeticOperation(cart, effect);
+    const result = ruleEngine.handleArithmeticAction(cart, effect);
     const amountAfterArithmeticOperation =
       result.purchase.amountTotalDiscounted;
 

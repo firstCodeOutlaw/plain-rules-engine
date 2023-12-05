@@ -4,7 +4,6 @@ export enum Action {
   INCREMENT = 'increment',
   OMIT = 'omit',
   OMIT_WITH_SILENT_ERROR = 'omit_with_silent_error',
-  REPLACE = 'replace',
 }
 
 export enum Operator {

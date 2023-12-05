@@ -55,6 +55,17 @@ export const musicTrackRules: Rule = {
   },
 };
 
+export const otherMusicTrackRules: Rule = {
+  trackShouldBeMarkedAsDownloaded: {
+    conditions: [['$.downloads.trackTitles', Operator.CONTAINS, '$.title']],
+    effect: {
+      action: Action.ADD,
+      property: 'isDownloaded',
+      value: true,
+    },
+  },
+};
+
 export const ruleWithUnknownAction: Rule = {
   applyStudentDiscount: {
     conditions: [['$.customerType', Operator.EQUALS, 'student']],

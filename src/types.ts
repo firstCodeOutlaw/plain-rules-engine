@@ -14,7 +14,7 @@ export type ApplyRulesResponse = {
 export type Effect = {
   action: Action;
   property?: string;
-  value?: number;
+  value?: boolean | number | string;
   error?: RuleError;
 };
 
